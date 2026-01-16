@@ -36,9 +36,14 @@ function(fri_add_sdk version zip_path)
         DESTINATION "${sdk_dir}"
     )
 
-    file(GLOB NANOPB_HEADER_PATH "${sdk_dir}/${FRIClient_SDK_NAME}/src/nanopb-*/pb.h")
+    set(sdk_root "${sdk_dir}/${FRIClient_SDK_NAME}")
+    if(NOT EXISTS "${sdk_root}/include/friClientIf.h")
+        set(sdk_root "${sdk_dir}")
+    endif()
+
+    file(GLOB NANOPB_HEADER_PATH "${sdk_root}/src/nanopb-*/pb.h")
     if(NOT NANOPB_HEADER_PATH)
-        message(FATAL_ERROR "Could not locate nanopb header in ${sdk_dir}")
+        message(FATAL_ERROR "Could not locate nanopb header in ${sdk_root}")
     endif()
     file(READ "${NANOPB_HEADER_PATH}" NANOPB_HEADER)
     string(REGEX MATCH "NANOPB_VERSION nanopb-([0-9]*).([0-9]*).([0-9]*)" _ ${NANOPB_HEADER})
@@ -48,7 +53,7 @@ function(fri_add_sdk version zip_path)
     set(NANOPB_VERSION_PATCH ${CMAKE_MATCH_3})
     set(NANOPB_VERSION ${NANOPB_VERSION_MAJOR}.${NANOPB_VERSION_MINOR}.${NANOPB_VERSION_PATCH})
 
-    file(READ "${sdk_dir}/${FRIClient_SDK_NAME}/include/friClientIf.h" FRI_CLIENT_IF_HEADER)
+    file(READ "${sdk_root}/include/friClientIf.h" FRI_CLIENT_IF_HEADER)
     string(REGEX MATCH "version \\{([0-9]+)\\.([0-9]+)" _ ${FRI_CLIENT_IF_HEADER})
     set(FRI_CLIENT_VERSION_MAJOR ${CMAKE_MATCH_1})
     set(FRI_CLIENT_VERSION_MINOR ${CMAKE_MATCH_2})
@@ -61,21 +66,21 @@ function(fri_add_sdk version zip_path)
     message(STATUS "Configuring FRIClient version ${FRI_CLIENT_VERSION}")
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/friClientVersion.h.in
-        ${sdk_dir}/${FRIClient_SDK_NAME}/include/friClientVersion.h
+        ${sdk_root}/include/friClientVersion.h
     )
 
     file(GLOB_RECURSE NANOPB_SOURCES RELATIVE ${CMAKE_CURRENT_BINARY_DIR}
-        ${sdk_dir}/${FRIClient_SDK_NAME}/src/nanopb-${NANOPB_VERSION}/*.c
+        ${sdk_root}/src/nanopb-${NANOPB_VERSION}/*.c
     )
 
     file(GLOB_RECURSE FRI_SOURCES RELATIVE ${CMAKE_CURRENT_BINARY_DIR}
-        ${sdk_dir}/${FRIClient_SDK_NAME}/src/base/*.cpp
-        ${sdk_dir}/${FRIClient_SDK_NAME}/src/client_lbr/*.cpp
-        ${sdk_dir}/${FRIClient_SDK_NAME}/src/client_trafo/*.cpp
-        ${sdk_dir}/${FRIClient_SDK_NAME}/src/connection/*.cpp
-        ${sdk_dir}/${FRIClient_SDK_NAME}/src/protobuf/*.cpp
-        ${sdk_dir}/${FRIClient_SDK_NAME}/src/protobuf/*.c
-        ${sdk_dir}/${FRIClient_SDK_NAME}/src/protobuf_gen/*.pb.c
+        ${sdk_root}/src/base/*.cpp
+        ${sdk_root}/src/client_lbr/*.cpp
+        ${sdk_root}/src/client_trafo/*.cpp
+        ${sdk_root}/src/connection/*.cpp
+        ${sdk_root}/src/protobuf/*.cpp
+        ${sdk_root}/src/protobuf/*.c
+        ${sdk_root}/src/protobuf_gen/*.pb.c
     )
 
     add_library(FRIClient_${version_tag} SHARED
@@ -90,12 +95,12 @@ function(fri_add_sdk version zip_path)
     target_include_directories(FRIClient_${version_tag}
         PUBLIC
             $<INSTALL_INTERFACE:include/fri/${version}>
-            $<BUILD_INTERFACE:${sdk_dir}/${FRIClient_SDK_NAME}/include>
+            $<BUILD_INTERFACE:${sdk_root}/include>
         PRIVATE
-            ${sdk_dir}/${FRIClient_SDK_NAME}/src/base
-            ${sdk_dir}/${FRIClient_SDK_NAME}/src/nanopb-${NANOPB_VERSION}
-            ${sdk_dir}/${FRIClient_SDK_NAME}/src/protobuf_gen
-            ${sdk_dir}/${FRIClient_SDK_NAME}/src/protobuf
+            ${sdk_root}/src/base
+            ${sdk_root}/src/nanopb-${NANOPB_VERSION}
+            ${sdk_root}/src/protobuf_gen
+            ${sdk_root}/src/protobuf
     )
 
     if(MSVC)
@@ -124,8 +129,7 @@ function(fri_add_sdk version zip_path)
     endif()
 
     set(FRI_CLIENT_TARGETS ${FRI_CLIENT_TARGETS} FRIClient_${version_tag} PARENT_SCOPE)
-    set(FRI_CLIENT_INCLUDE_DIRS ${FRI_CLIENT_INCLUDE_DIRS}
-        ${sdk_dir}/${FRIClient_SDK_NAME}/include PARENT_SCOPE)
+    set(FRI_CLIENT_SDK_ROOT_${version_tag} ${sdk_root} PARENT_SCOPE)
 endfunction()
 
 set(FRI_CLIENT_TARGETS "")
@@ -179,8 +183,14 @@ install(TARGETS ${FRI_CLIENT_TARGETS}
 foreach(version IN LISTS FRI_CLIENT_SDK_VERSIONS)
     string(REPLACE "." "_" version_tag "${version}")
     if (TARGET FRIClient_${version_tag})
+        set(root_var "FRI_CLIENT_SDK_ROOT_${version_tag}")
+        if(DEFINED ${root_var})
+            set(sdk_root "${${root_var}}")
+        else()
+            set(sdk_root "${CMAKE_CURRENT_BINARY_DIR}/${FRIClient_SDK_NAME}_${version_tag}/${FRIClient_SDK_NAME}")
+        endif()
         install(
-            DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${FRIClient_SDK_NAME}_${version_tag}/${FRIClient_SDK_NAME}/include/
+            DIRECTORY ${sdk_root}/include/
             DESTINATION include/fri/${version}
         )
     endif()
