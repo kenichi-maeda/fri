@@ -20,6 +20,14 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_FRI_APPS=ON
 cmake --build build
 ```
 
+### Multiple SDK versions
+To build multiple FRI SDK versions in one build, place the SDK zips next to this file
+using the naming pattern `FRI-Client-SDK_Cpp-<version>.zip` (e.g. `FRI-Client-SDK_Cpp-1.15.zip`).
+You can also keep a default `FRI-Client-SDK_Cpp.zip` for the default version.
+
+Set `-DFRI_CLIENT_SDK_VERSIONS="1.11;1.14;1.15;1.16;2.5;2.7"` and
+`-DFRI_CLIENT_SDK_DEFAULT_VERSION=1.15` if you need to override defaults.
+
 ## Run the Apps
 To run the example applications, run
 

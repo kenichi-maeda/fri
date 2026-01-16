@@ -1,0 +1,5 @@
+include("${CMAKE_CURRENT_LIST_DIR}/FRIClientTargets.cmake")
+
+if(TARGET FRIClient::FRIClient_@FRI_CLIENT_DEFAULT_TAG@ AND NOT TARGET FRIClient::FRIClient)
+    add_library(FRIClient::FRIClient ALIAS FRIClient::FRIClient_@FRI_CLIENT_DEFAULT_TAG@)
+endif()
